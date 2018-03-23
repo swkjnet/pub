@@ -87,6 +87,36 @@ func IsStructPtr(t reflect.Type) bool {
 	return t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct
 }
 
+//对象转url参数
+func ToUrlParams(obj interface{}) string {
+	if obj == nil {
+		return ""
+	}
+	objT := reflect.TypeOf(obj)
+	objV := reflect.ValueOf(obj)
+	if !IsStructPtr(objT) {
+		return ""
+	}
+	res := make([]string, 0)
+	objT = objT.Elem()
+	objV = objV.Elem()
+	for i := 0; i < objT.NumField(); i++ {
+		fieldV := objV.Field(i)
+		if !fieldV.CanSet() {
+			continue
+		}
+		fieldT := objT.Field(i)
+		tag := fieldT.Tag.Get("json")
+		if tag == "-" {
+			continue
+		} else if tag == "" {
+			tag = fieldT.Name
+		}
+		res = append(res, fmt.Sprint(tag, "=", url.QueryEscape(fmt.Sprint(fieldV.Interface()))))
+	}
+	return strings.Join(res, "&")
+}
+
 // ParseForm will parse form values to struct via tag.
 func ParseForm(form url.Values, obj interface{}) error {
 	objT := reflect.TypeOf(obj)
@@ -247,6 +277,16 @@ func GetExternal() (string, error) {
 	}
 	res = r.ReplaceAll(res, []byte(""))
 	return string(res), nil
+}
+
+//httpGet请求
+func HttpGet(urlStr string, data interface{}, timeout time.Duration) ([]byte, error) {
+	client := http.Client{Timeout: timeout}
+	resp, err := client.Get(fmt.Sprint(urlStr, "?", ToUrlParams(data)))
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(resp.Body)
 }
 
 //发送报警信息
