@@ -3,6 +3,7 @@ package pub
 import (
 	"bytes"
 	"compress/zlib"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,16 +89,18 @@ func IsStructPtr(t reflect.Type) bool {
 }
 
 //对象转url参数
-func ToUrlParams(obj interface{}) string {
+//返回值为编码后以及编码前的
+func ToUrlParams(obj interface{}) (string, string) {
 	if obj == nil {
-		return ""
+		return "", ""
 	}
 	objT := reflect.TypeOf(obj)
 	objV := reflect.ValueOf(obj)
 	if !IsStructPtr(objT) {
-		return ""
+		return "", ""
 	}
 	res := make([]string, 0)
+	orires := make([]string, 0)
 	objT = objT.Elem()
 	objV = objV.Elem()
 	for i := 0; i < objT.NumField(); i++ {
@@ -113,8 +116,9 @@ func ToUrlParams(obj interface{}) string {
 			tag = fieldT.Name
 		}
 		res = append(res, fmt.Sprint(tag, "=", url.QueryEscape(fmt.Sprint(fieldV.Interface()))))
+		orires = append(orires, fmt.Sprint(tag, "=", fieldV.Interface()))
 	}
-	return strings.Join(res, "&")
+	return strings.Join(res, "&"), strings.Join(orires, "&")
 }
 
 // ParseForm will parse form values to struct via tag.
@@ -280,13 +284,29 @@ func GetExternal() (string, error) {
 }
 
 //httpGet请求
-func HttpGet(urlStr string, data interface{}, timeout time.Duration) ([]byte, error) {
-	client := http.Client{Timeout: timeout}
-	resp, err := client.Get(fmt.Sprint(urlStr, "?", ToUrlParams(data)))
+func HttpsGet(urlStr string, timeout time.Duration) ([]byte, time.Duration, error) {
+	t := time.Now()
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	client := http.Client{Timeout: timeout, Transport: tr}
+	resp, err := client.Get(urlStr)
 	if err != nil {
-		return nil, err
+		return []byte("overtime"), 0, err
 	}
-	return ioutil.ReadAll(resp.Body)
+	buf, err := ioutil.ReadAll(resp.Body)
+	return buf, time.Since(t), err
+}
+
+//获取带base64_sha1签名url地址
+func GetSigUrl(urlStr string, uri string, key string, data interface{}) string {
+	param, oriparam := ToUrlParams(data)
+	ori := fmt.Sprint("GET", "&", url.QueryEscape(uri), "&", url.QueryEscape(oriparam))
+	sig := base64_sha1(ori, key)
+	return fmt.Sprint(urlStr, uri, "?", param, "&sig=", url.QueryEscape(sig))
+}
+
+//sigurl请求
+func HttpsSigURL(urlStr string, uri string, key string, data interface{}, timeout time.Duration) ([]byte, time.Duration, error) {
+	return HttpsGet(GetSigUrl(urlStr, uri, key, data), timeout)
 }
 
 //发送报警信息
