@@ -129,6 +129,7 @@ func (this *DataBase) freeSession(sess *DBSession) {
 	}
 }
 
+//创建索引
 func (this *DataBase) IndexTable(dbname, colname string, indexname string, key []string, unique bool, dropDups bool) error {
 	sess := this.getSession()
 	if sess == nil {
@@ -160,6 +161,7 @@ func (this *DataBase) IndexTable(dbname, colname string, indexname string, key [
 	return nil
 }
 
+//按条件查询记录数
 func (this *DataBase) FindCount(dbname, colname string, find interface{}) int {
 	sess := this.getSession()
 	if sess == nil {
@@ -178,6 +180,7 @@ func (this *DataBase) FindCount(dbname, colname string, find interface{}) int {
 	return count
 }
 
+//按条件按列键查询
 func (this *DataBase) FindAllSelector(dbname, colname string, find interface{}, selector interface{}, result interface{}) error {
 	sess := this.getSession()
 	if sess == nil {
@@ -196,6 +199,7 @@ func (this *DataBase) FindAllSelector(dbname, colname string, find interface{}, 
 	return nil
 }
 
+//查询所有表
 func (this *DataBase) GetCollectionNames(dbname string) ([]string, error) {
 	sess := this.getSession()
 	if sess == nil {
@@ -212,6 +216,7 @@ func (this *DataBase) GetCollectionNames(dbname string) ([]string, error) {
 	return names, nil
 }
 
+//按条件查询
 func (this *DataBase) FindAll(dbname, colname string, find interface{}, result interface{}) error {
 	sess := this.getSession()
 	if sess == nil {
@@ -229,6 +234,7 @@ func (this *DataBase) FindAll(dbname, colname string, find interface{}, result i
 	return nil
 }
 
+//根据条件获取一条记录
 func (this *DataBase) FindOne(dbname, colname string, find interface{}, result interface{}) bool {
 	sess := this.getSession()
 	if sess == nil {
@@ -249,6 +255,7 @@ func (this *DataBase) FindOne(dbname, colname string, find interface{}, result i
 	return true
 }
 
+//根据id查找
 func (this *DataBase) FindId(dbname, colname string, id interface{}, result interface{}) bool {
 	sess := this.getSession()
 	if sess == nil {
@@ -269,6 +276,26 @@ func (this *DataBase) FindId(dbname, colname string, id interface{}, result inte
 	return true
 }
 
+//游标遍历处理
+func (this *DataBase) FindIter(dbname, colname string, find interface{}, result interface{}, iterFunc func(int) bool, sorfields ...string) bool {
+	sess := this.getSession()
+	if sess == nil {
+		return false
+	}
+	defer this.freeSession(sess)
+	col := sess.DB(dbname).C(colname)
+	iter := col.Find(find).Sort(sorfields...).Iter()
+	i := 0
+	for iter.Next(&result) {
+		if !iterFunc(i) {
+			break
+		}
+		i++
+	}
+	return true
+}
+
+//分页查询
 func (this *DataBase) FindBySkipLimit(dbname, colname string, find interface{}, result interface{}, skip int, limit int, sortFields ...string) bool {
 	sess := this.getSession()
 	if sess == nil {
@@ -294,6 +321,7 @@ func (this *DataBase) FindBySkipLimit(dbname, colname string, find interface{}, 
 	return true
 }
 
+//更新
 func (this *DataBase) Update(dbname, colname string, selector interface{}, update interface{}) bool {
 	sess := this.getSession()
 	if sess == nil {
@@ -313,6 +341,7 @@ func (this *DataBase) Update(dbname, colname string, selector interface{}, updat
 	return true
 }
 
+//按条件更新，若没有则插入
 func (this *DataBase) UpdateNoInsert(dbname, colname string, selector interface{}, update interface{}) bool {
 	sess := this.getSession()
 	if sess == nil {
@@ -325,7 +354,7 @@ func (this *DataBase) UpdateNoInsert(dbname, colname string, selector interface{
 	err := col.Update(selector, bson.M{"$set": update})
 	if err != nil {
 		if err.Error() == "not found" {
-			return this.Insert(dbname, colname, update)
+			col.Insert(update)
 		} else {
 			PrintFileLog(dblog, fmt.Sprintf("UpdateNoInsert error:%s", err.Error()))
 			sess.Active = false
@@ -335,6 +364,7 @@ func (this *DataBase) UpdateNoInsert(dbname, colname string, selector interface{
 	return true
 }
 
+//按唯一索引更新，没有则插入
 func (this *DataBase) Upsert(dbname, colname string, selector interface{}, update interface{}) (*mgo.ChangeInfo, bool) {
 	sess := this.getSession()
 	if sess == nil {
@@ -353,6 +383,7 @@ func (this *DataBase) Upsert(dbname, colname string, selector interface{}, updat
 	return info, true
 }
 
+//更新所有
 func (this *DataBase) UpdateAll(dbname, colname string, selector interface{}, update interface{}) bool {
 	sess := this.getSession()
 	if sess == nil {
@@ -371,6 +402,7 @@ func (this *DataBase) UpdateAll(dbname, colname string, selector interface{}, up
 	return true
 }
 
+//根据ID更新
 func (this *DataBase) Updatebyid(dbname, colname string, id interface{}, update interface{}) bool {
 	sess := this.getSession()
 	if sess == nil {
@@ -389,6 +421,7 @@ func (this *DataBase) Updatebyid(dbname, colname string, id interface{}, update 
 	return true
 }
 
+//删除
 func (this *DataBase) Delete(dbname, colname string, id interface{}) error {
 	sess := this.getSession()
 	if sess == nil {
@@ -407,6 +440,7 @@ func (this *DataBase) Delete(dbname, colname string, id interface{}) error {
 	return nil
 }
 
+//删除表
 func (this *DataBase) DropCol(dbname, colname string) error {
 	sess := this.getSession()
 	if sess == nil {
@@ -425,6 +459,7 @@ func (this *DataBase) DropCol(dbname, colname string) error {
 	return nil
 }
 
+//插入记录
 func (this *DataBase) Insert(dbname, colname string, data interface{}) bool {
 	sess := this.getSession()
 	if sess == nil {
