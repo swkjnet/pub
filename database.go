@@ -42,6 +42,12 @@ type DataBase struct {
 	lastT   int64  //lastt
 }
 
+type PageData struct {
+	Total int      `json:"total"`
+	Rows  []bson.M `json:"rows"`
+	Page  int      `json:"page"`
+}
+
 func GetUID() string { ///分配一个唯一ID
 	return bson.NewObjectId().Hex()
 }
@@ -476,4 +482,47 @@ func (this *DataBase) Insert(dbname, colname string, data interface{}) bool {
 		return false
 	}
 	return true
+}
+
+//分页处理
+func (this *DataBase) GetPage(dbname, colname string, find interface{}, fields []string, sort []string, page int, rows int) *PageData {
+	data := "find PageData"
+	sess := this.getSession()
+	if sess == nil {
+		return nil
+	}
+	defer this.freeSession(sess)
+	defer this.Warning("Find", dbname, colname, data, time.Now())
+	db := sess.DB(dbname)
+	col := db.C(colname)
+	if page == 0 {
+		page = 1
+	}
+	if rows == 0 {
+		rows = 20
+	}
+	res := new(PageData)
+	res.Page = page
+	res.Rows = make([]bson.M, 0)
+	q := col.Find(find)
+	var err error
+	res.Total, err = q.Count()
+	if err != nil {
+		return nil
+	}
+	if fields != nil {
+		var Mfields bson.M = make(bson.M)
+		for _, v := range fields {
+			Mfields[v] = 1
+		}
+		q = q.Select(Mfields)
+	}
+	if sort != nil {
+		q.Sort(sort...)
+	}
+	err = q.Skip((page - 1) * rows).Limit(rows).All(&res.Rows)
+	if err != nil {
+		return nil
+	}
+	return res
 }
