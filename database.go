@@ -292,7 +292,7 @@ func (this *DataBase) FindIter(dbname, colname string, find interface{}, result 
 	col := sess.DB(dbname).C(colname)
 	iter := col.Find(find).Sort(sorfields...).Iter()
 	i := 0
-	for iter.Next(&result) {
+	for iter.Next(result) {
 		if !iterFunc(i) {
 			break
 		}
