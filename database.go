@@ -167,6 +167,32 @@ func (this *DataBase) IndexTable(dbname, colname string, indexname string, key [
 	return nil
 }
 
+/**
+*统计方法
+* 库名
+* 表名
+* 条件
+* 统计方法(sum、max、min)
+* 统计字段
+ */
+func (this *DataBase) Stat(dbname, colname string, match bson.M, statType, field string) (int, error) {
+	var res struct {
+		Val int `bson:"val"`
+	}
+	pipeline := []bson.M{
+		bson.M{"$match": match},
+		bson.M{"$group": bson.M{"_id": "1", "val": bson.M{"$" + statType: "$" + field}}},
+	}
+	sess := this.getSession()
+	if sess == nil {
+		return 0, nil
+	}
+	defer this.freeSession(sess)
+	col := sess.DB(dbname).C(colname)
+	err := col.Pipe(pipeline).One(&res)
+	return res.Val, err
+}
+
 //按条件查询记录数
 func (this *DataBase) FindCount(dbname, colname string, find interface{}) int {
 	sess := this.getSession()
