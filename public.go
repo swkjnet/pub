@@ -309,6 +309,17 @@ func HttpsSigURL(urlStr string, uri string, key string, data interface{}, timeou
 	return HttpsGet(GetSigUrl(urlStr, uri, key, data), timeout)
 }
 
+//获取url参数
+func getHttpParams(oriUrl string, name string) string {
+	r, _ := regexp.Compile("(\\?|#|&)" + name + "=([^&#]*)(&|#|$)")
+	arr := r.FindStringSubmatch(oriUrl)
+	if len(arr) > 3 {
+		log.Println("match:", arr)
+		return arr[2]
+	}
+	return ""
+}
+
 //发送报警信息
 func SendAlarm(desc string) {
 	cmd := exec.Command("/bin/sh", "-c", "cagent_tools alarm '"+desc+"'")
