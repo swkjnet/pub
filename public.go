@@ -314,7 +314,6 @@ func getHttpParams(oriUrl string, name string) string {
 	r, _ := regexp.Compile("(\\?|#|&)" + name + "=([^&#]*)(&|#|$)")
 	arr := r.FindStringSubmatch(oriUrl)
 	if len(arr) > 3 {
-		log.Println("match:", arr)
 		return arr[2]
 	}
 	return ""
