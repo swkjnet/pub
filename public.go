@@ -310,7 +310,7 @@ func HttpsSigURL(urlStr string, uri string, key string, data interface{}, timeou
 }
 
 //获取url参数
-func getHttpParams(oriUrl string, name string) string {
+func GetHttpParams(oriUrl string, name string) string {
 	r, _ := regexp.Compile("(\\?|#|&)" + name + "=([^&#]*)(&|#|$)")
 	arr := r.FindStringSubmatch(oriUrl)
 	if len(arr) > 3 {
