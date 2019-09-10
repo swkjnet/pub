@@ -27,5 +27,7 @@ func Hmac_sha1(val string, key string) []byte {
 
 //md5签名
 func Md5Str(val string) string {
-	return fmt.Sprintf("%x", md5.New().Sum(nil))
+	h := md5.New()
+	h.Write([]byte(val))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
